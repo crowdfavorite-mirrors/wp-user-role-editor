@@ -19,14 +19,14 @@ $option_name = $wpdb->prefix.'user_roles';
 if (isset($_REQUEST['object'])) {
   $ure_object = $_REQUEST['object'];
 } else {
-  $ure_object = '';
+  $ure_object = 'role';
 }
 
 if (isset($_REQUEST['action'])) {
   $action = $_REQUEST['action'];
   // restore roles capabilities from the backup record
   if ($action=='reset') {
-    $mess = ure_restore_user_roles();
+    $mess = ure_reset_user_roles();
     if (!$mess) {
       return;
     }
@@ -56,7 +56,7 @@ if (isset($_REQUEST['action'])) {
   } else if ($action=='removeusercapability') {
     $mess = ure_RemoveCapability();
   } else if ($action=='roles_restore_note') {
-    $mess = __('User Roles are restored from the backup data. ', 'ure');
+    $mess = __('User Roles are restored to WordPress default values. ', 'ure');
   }
 } else {
   $action = '';
@@ -124,37 +124,39 @@ if ($ure_object=='user') {
   }  
 }
 
-if (isset($_POST['action']) && $_POST['action'] == 'update' && isset($_POST['user_role'])) {
-  $ure_currentRole = $_POST['user_role'];
-  if (!isset($ure_roles[$ure_currentRole])) {
-    $mess = __('Error: ', 'ure') . __('Role', 'ure') . ' <em>' . $ure_currentRole . '</em> ' . __('does not exist', 'ure');
-  } else {
-    $ure_currentRoleName = $ure_roles[$ure_currentRole]['name'];
-    $ure_capabilitiesToSave = array();
-    foreach ($ure_fullCapabilities as $availableCapability) {
-      $cap_id = str_replace(' ', URE_SPACE_REPLACER, $availableCapability['inner']);
-      if (isset($_POST[$cap_id])) {
-        $ure_capabilitiesToSave[$availableCapability['inner']] = true;
-      }
+if ( isset( $_POST['action'] ) && $_POST['action'] == 'update' && isset( $_POST['submit'] ) ) {
+	if ( isset( $_POST['user_role'] ) ) {
+		$ure_currentRole = $_POST['user_role'];
+		if (!isset($ure_roles[$ure_currentRole])) {
+			$mess = __('Error: ', 'ure') . __('Role', 'ure') . ' <em>' . $ure_currentRole . '</em> ' . __('does not exist', 'ure');
+		} else {
+			$ure_currentRoleName = $ure_roles[$ure_currentRole]['name'];
+		}
+	}
+  $ure_capabilitiesToSave = array();
+  foreach ($ure_fullCapabilities as $availableCapability) {
+    $cap_id = str_replace(' ', URE_SPACE_REPLACER, $availableCapability['inner']);
+    if (isset($_POST[$cap_id])) {
+      $ure_capabilitiesToSave[$availableCapability['inner']] = true;
     }
-    if ($ure_object == 'role') {  // save role changes to database
-      if (count($ure_capabilitiesToSave) > 0) {
-        if (ure_updateRoles()) {
-          if ($mess) {
-            $mess .= '<br/>';
-          }
-          $mess = __('Role', 'ure') . ' <em>' . __($ure_roles[$ure_currentRole]['name'], 'ure') . '</em> ' . __('is updated successfully', 'ure');
-        }
-      }
-    } else {
-      if (ure_updateUser($ure_userToEdit)) {
+  }
+  if ($ure_object == 'role') {  // save role changes to database
+    if (count($ure_capabilitiesToSave) > 0) {
+      if (ure_updateRoles()) {
         if ($mess) {
           $mess .= '<br/>';
         }
-        $mess = __('User', 'ure') . ' &lt;<em>' . $ure_userToEdit->display_name . '</em>&gt; ' . __('capabilities are updated successfully', 'ure');
+        $mess = __('Role', 'ure') . ' <em>' . __($ure_roles[$ure_currentRole]['name'], 'ure') . '</em> ' . __('is updated successfully', 'ure');
       }
     }
-  }
+  } else {
+    if (ure_updateUser($ure_userToEdit)) {
+      if ($mess) {
+        $mess .= '<br/>';
+      }
+      $mess = __('User', 'ure') . ' &lt;<em>' . $ure_userToEdit->display_name . '</em>&gt; ' . __('capabilities are updated successfully', 'ure');
+    }
+  }  
 }
 
 // options page display part
@@ -220,13 +222,13 @@ ure_showMessage($mess);
 		</div>  
 
 		<div style="text-align: center;">
-			<a title="ManageWP" href="http://managewp.com/?utm_source=user_role_editor&utm_medium=Banner&utm_content=mwp250_2&utm_campaign=Plugins" targer="_new" >
+			<a title="ManageWP" href="http://managewp.com/?utm_source=user_role_editor&utm_medium=Banner&utm_content=mwp250_2&utm_campaign=Plugins" target="_new" >
 				<img width="250" height="250" alt="ManageWP" src="<?php echo URE_PLUGIN_URL; ?>/images/mwp250_2.png">
 			</a>                        
 		</div>  
 
-		<div style="width: 250px;text-align: center;">
-			<a href="http://chooseplugin.com"><img src="<?php echo URE_PLUGIN_URL . '/images/chooseplugin.png'; ?>" alt="ChoosePlugin.com" title="Advanced search plugins service from User Role Editor developer" style="border: 1px solid #CCCCCC;"/></a>
+		<div style="text-align: center;">
+			<a href="http://chooseplugin.com"><img src="<?php echo URE_PLUGIN_URL . '/images/chooseplugin.png'; ?>" alt="Choose WordPress plugins with ChoosePlugin.com" title="Advanced search WordPress plugins service from User Role Editor developer" /></a>
 		</div>  
 
 		<?php ure_displayBoxStart(__('About this Plugin:', 'ure')); ?>
@@ -258,6 +260,7 @@ ure_showMessage($mess);
 			<hr />
 			<h3><a name="greetings"><?php _e('Greetings', 'ure'); ?></a></h3>                  
 			<a class="ure_rsb_link" style="background-image:url(<?php echo $shinephpFavIcon; ?>);" target="_blank" title="<?php _e("It's me, the author", 'ure'); ?>" href="http://www.shinephp.com/">Vladimir</a>
+			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/yaser.png'; ?>)" target="_blank" title="<?php _e("For the help with Arabic translation", 'ure'); ?>" href="http://www.englize.com/">Yaser</a>
 			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/marsis.png'; ?>)" target="_blank" title="<?php _e("For the help with Belorussian translation", 'ure'); ?>" href="http://pc.de">Marsis G.</a>
 			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/rafael.png'; ?>)" target="_blank" title="<?php _e("For the help with Brasilian translation", 'ure'); ?>" href="http://www.arquiteturailustrada.com.br/">Rafael Galdencio</a>
 			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/onbiz.png'; ?>)" target="_blank" title="<?php _e("For the help with Brasilian Portuguese translation", 'ure'); ?>" href="http://www.onbiz.com.br">Onbiz</a>
@@ -281,10 +284,12 @@ ure_showMessage($mess);
 			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/tagsite.png'; ?>)" target="_blank" title="<?php _e("For the help with Polish translation", 'ure'); ?>" href="http://www.tagsite.eu">TagSite</a>
 			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/bartosz.png'; ?>)" target="_blank" title="<?php _e("For the help with Polish translation", 'ure'); ?>" href="http://www.digitalfactory.pl">Bartosz</a>
 			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/wpcouponshop.png'; ?>)" target="_blank" title="<?php _e("For the help with Serbian translation", 'ure'); ?>" href="http://wpcouponshop.com">Diana</a>
+			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/branco.png'; ?>)" target="_blank" title="<?php _e("For the help with Slovak translation", 'ure'); ?>" href="http://webhostinggeeks.com/blog/">Branco (WebHostingGeeks.com)</a>
 			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/infomed.png'; ?>)" target="_blank" title="<?php _e("For the help with Spanish translation", 'ure'); ?>" href="http://www.sld.cu">Victor Ricardo Díaz (INFOMED)</a>
 			<span title="<?php _e("For the help with Spanish translation", 'ure'); ?>" >Dario  Ferrer</span>
 			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/andreas.png'; ?>)" target="_blank" title="<?php _e("For the updated Swedish translation", 'ure'); ?>" href="http://adevade.com/">Andréas Lundgren</a>
 			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/christer.png'; ?>)" target="_blank" title="<?php _e("For the help with Swedish translation", 'ure'); ?>" href="http://www.startlinks.eu">Christer Dahlbacka</a>
+			<span title="<?php _e("For the help with Traditional Chinese translation", 'ure'); ?>">Jingxin Lai</span>
 			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/muhammed.png'; ?>)" target="_blank" title="<?php _e("For the help with Turkish translation", 'ure'); ?>" href="http://ben.muhammed.im/">Muhammed YILDIRIM</a>
 			<hr />
 			<a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . '/images/fullthrottle.png'; ?>)" target="_blank" title="<?php _e("For the code to hide administrator role", 'ure'); ?>" href="http://fullthrottledevelopment.com/how-to-hide-the-adminstrator-on-the-wordpress-users-screen">FullThrottle</a>
