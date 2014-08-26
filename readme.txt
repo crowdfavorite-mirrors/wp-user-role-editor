@@ -3,7 +3,7 @@ Contributors: shinephp
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=vladimir%40shinephp%2ecom&lc=RU&item_name=ShinePHP%2ecom&item_number=User%20Role%20Editor%20WordPress%20plugin&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted
 Tags: user, role, editor, security, access, permission, capability
 Requires at least: 3.5
-Tested up to: 3.9.1
+Tested up to: 4.0
 Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -70,11 +70,11 @@ To read more about 'User Role Editor' visit [this page](http://www.shinephp.com/
 * Hebrew: [atar4u](http://atar4u.com)
 * Korean: [Taek Yoon](http://www.ajinsys.com)
 * Persian: Morteza
+* Russian: [Vladimir Garagulya](http://role-editor.com)
 * Spanish: [Dario Ferrer](http://darioferrer.com/);
 * Turkish: [Muhammed YILDIRIM](http://ben.muhammed.im);
 
-
-Information for translators: All translations are outdated a little and need update.
+Information for translators: All translations (except Russian) are outdated and need update for new added text.
 
 Dear plugin User!
 If you wish to help me with this plugin translation I very appreciate it. Please send your language .po and .mo files to vladimir[at-sign]shinephp.com email. Do not forget include you site link in order I can show it with greetings for the translation help at shinephp.com, plugin settings page and in this readme.txt file.
@@ -83,6 +83,28 @@ Share with me new ideas about plugin further development and link to your site w
 
 
 == Changelog ==
+= 4.14.4 =
+* 08.08.2014
+* Missed "manage_sites" user capability was added to the list of built-in WordPress capabilities managed by User Role Editor.
+* Russian translation was updated.
+
+= 4.14.3 =
+* 25.07.2014
+* Integer "1" as default capability value for new added empty role was excluded for the better compatibility with WordPress core. Boolean "true" is used instead as WordPress itself does.
+* Integration with Gravity Forms permissions system was enhanced for WordPress multisite.
+
+= 4.14.2 =
+* 18.07.2014
+* The instance of main plugin class User_Role_Editor is available for other developers now via $GLOBALS['user_role_editor']
+* Compatibility issue with the theme ["WD TechGoStore"](http://wpdance.com) is resolved. This theme loads its JS and CSS stuff for admin backend uncoditionally - for all pages. While the problem is caused just by CSS URE unloads all this theme JS and CSS for optimizaiton purpose for WP admin backend pages where conflict is possible.
+
+= 4.14.1 =
+* 13.06.2014
+* MySQL query optimizing to reduce memory consumption. Thanks to [SebastiaanO](http://wordpress.org/support/topic/allowed-memory-size-exhausted-fixed).
+* Extra WordPress nonce field was removed from the post at main role editor page to exclude nonce duplication.
+* Minor code enhancements.
+* Fixes for some missed translations.
+
 = 4.14 =
 * 16.05.2014
 * Persian translation was added. Thanks to Morteza.

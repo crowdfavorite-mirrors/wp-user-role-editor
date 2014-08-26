@@ -33,7 +33,6 @@ class Ure_Lib extends Garvs_WP_Lib {
 	protected $role_select_html = '';
 	protected $role_delete_html = '';
 	protected $capability_remove_html = '';
-	protected $integrate_with_gravity_forms = false;
 	protected $advert = null; 	
   
   
@@ -44,9 +43,7 @@ class Ure_Lib extends Garvs_WP_Lib {
      */
     public function __construct($options_id) {
                                            
-        parent::__construct($options_id);        
-        
-        $this->integrate_with_gravity_forms = class_exists('GFForms');
+        parent::__construct($options_id);                
          
         
     }
@@ -232,10 +229,9 @@ class Ure_Lib extends Garvs_WP_Lib {
 
         <div class="has-sidebar" >
             <form id="ure_form" method="post" action="<?php echo URE_WP_ADMIN_URL . URE_PARENT.'?page=users-'.URE_PLUGIN_FILE;?>" >			
-                <div id="ure_form_controls">				
+                <div id="ure_form_controls">
 <?php
                     wp_nonce_field('user-role-editor', 'ure_nonce');
-                    settings_fields('ure-options');
                     if ($this->ure_object == 'user') {
                         require_once(URE_PLUGIN_DIR . 'includes/ure-user-edit.php');
                     } else {
@@ -244,6 +240,7 @@ class Ure_Lib extends Garvs_WP_Lib {
                         require_once(URE_PLUGIN_DIR . 'includes/ure-role-edit.php');
                     }
 ?>
+                    <input type="hidden" name="action" value="update" />
                 </div>      
             </form>		      
 <?php	
@@ -577,8 +574,7 @@ class Ure_Lib extends Garvs_WP_Lib {
      * @param int $user_id
      * @return boolean true 
      */
-    public function user_is_admin($user_id = false) 
-    {
+    public function user_is_admin($user_id = false) {
         global $current_user;
 
         $ure_key_capability = $this->get_key_capability();
@@ -588,33 +584,6 @@ class Ure_Lib extends Garvs_WP_Lib {
         $result = user_can($user_id, $ure_key_capability);
         
         return $result;
-/*        
- // Checks if user is superadmin under multi-site environment or has administrator role for the standalone WP
-        if (!$user_id) {
-            if (empty($current_user) && function_exists('get_currentuserinfo')) {
-                get_currentuserinfo();
-            }
-            $user_id = !empty($current_user) ? $current_user->ID : 0;
-        }
-
-        if (!$user_id) {
-            return false;
-        }
-
-        $user = new WP_User($user_id);
-
-        $simple_admin = $this->has_administrator_role($user_id);
-
-        if ($this->multisite) {
-            $super_admins = get_super_admins();
-            $super_admin = is_array($super_admins) && in_array($user->user_login, $super_admins);
-        } else {
-            $super_admin = false;
-        }
-
-        return $simple_admin || $super_admin;
- * 
- */
     }
     // end of user_is_admin()
 
@@ -655,14 +624,7 @@ class Ure_Lib extends Garvs_WP_Lib {
                         $cap_removed = true;
                     }
                 }
-            }
-            /*
-              if ($cap_removed) {
-              // save changes to database
-              $option_name = $wpdb->prefix.'user_roles';
-              update_option($option_name, $this->roles);
-              }
-             */
+            }            
         } else {
             $this->roles = $wp_roles->roles;
         }
@@ -823,7 +785,7 @@ class Ure_Lib extends Garvs_WP_Lib {
             }
             
             // check if user with such role exists
-            $query = "SELECT meta_value
+            $query = "SELECT DISTINCT meta_value
                 FROM $table_name
                 WHERE meta_key='$meta_key' AND meta_value like '%$key%'";
             $roles_used = $wpdb->get_results($query);
@@ -921,7 +883,8 @@ class Ure_Lib extends Garvs_WP_Lib {
         $caps['delete_users'] = 1;
         $caps['create_users'] = 1;
         if ($this->multisite) {
-            $caps['manage_network'] = 1;        
+            $caps['manage_network'] = 1;
+            $caps['manage_sites'] = 1;
             $caps['manage_network_users'] = 1;
             $caps['manage_network_themes'] = 1;
             $caps['manage_network_plugins'] = 1;
@@ -1424,7 +1387,7 @@ class Ure_Lib extends Garvs_WP_Lib {
             }
         }
         // Get Gravity Forms plugin capabilities, if available
-        if ($this->integrate_with_gravity_forms) {
+        if (class_exists('GFCommon')) {
             $gf_caps = GFCommon::all_caps();
             foreach ($gf_caps as $gf_cap) {
                 $this->add_capability_to_full_caps_list($gf_cap);
@@ -1590,6 +1553,17 @@ class Ure_Lib extends Garvs_WP_Lib {
     // end of direct_network_roles_update()
 
     
+    public function restore_after_blog_switching($blog_id = 0) {
+        
+        if (!empty($blog_id)) {
+            switch_to_blog($blog_id);
+        }
+        // cleanup blog switching data
+        $GLOBALS['_wp_switched_stack'] = array();
+        $GLOBALS['switched'] = ! empty( $GLOBALS['_wp_switched_stack'] );
+    }
+    // end of restore_after_blog_switching(
+    
     protected function wp_api_network_roles_update() {
         global $wpdb;
         
@@ -1599,17 +1573,14 @@ class Ure_Lib extends Garvs_WP_Lib {
             switch_to_blog($blog_id);
             $this->roles = $this->get_user_roles();
             if (!isset($this->roles[$this->current_role])) { // add new role to this blog
-                $this->roles[$this->current_role] = array('name' => $this->current_role_name, 'capabilities' => array('read' => 1));
+                $this->roles[$this->current_role] = array('name' => $this->current_role_name, 'capabilities' => array('read' => true));
             }
             if (!$this->save_roles()) {
                 $result = false;
                 break;
             }
         }
-        switch_to_blog($old_blog);
-        // cleanup blog switching data
-        $GLOBALS['_wp_switched_stack'] = array();
-        $GLOBALS['switched'] = ! empty( $GLOBALS['_wp_switched_stack'] );
+        $this->restore_after_blog_switching($old_blog);
         $this->roles = $this->get_user_roles();
         
         return $result;
@@ -1759,7 +1730,7 @@ class Ure_Lib extends Garvs_WP_Lib {
                     $role = $wp_roles->get_role($user_role_copy_from);
                     $capabilities = $this->remove_caps_not_allowed_for_single_admin($role->capabilities);
                 } else {
-                    $capabilities = array('read' => 1, 'level_0' => 1);
+                    $capabilities = array('read' => true, 'level_0' => true);
                 }
                 // add new role to the roles array      
                 $result = add_role($user_role_id, $user_role_name, $capabilities);
@@ -2228,7 +2199,7 @@ class Ure_Lib extends Garvs_WP_Lib {
 ?>		  
             <h2>User Role Editor</h2>         
             
-            <strong>Version:</strong> <?php echo URE_VERSION; ?><br/><br/>
+            <strong><?php esc_html_e('Version:', 'ure');?></strong> <?php echo URE_VERSION; ?><br/><br/>
             <a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . 'images/vladimir.png'; ?>);" target="_blank" href="http://www.shinephp.com/"><?php _e("Author's website", 'ure'); ?></a><br/>
             <a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . 'images/user-role-editor-icon.png'; ?>);" target="_blank" href="http://role-editor.com"><?php _e('Plugin webpage', 'ure'); ?></a><br/>
             <a class="ure_rsb_link" style="background-image:url(<?php echo URE_PLUGIN_URL . 'images/user-role-editor-icon.png'; ?>);" target="_blank" href="http://role-editor.com/download-plugin"><?php _e('Plugin download', 'ure'); ?></a><br/>
@@ -2340,7 +2311,7 @@ class Ure_Lib extends Garvs_WP_Lib {
     // end of user_primary_role_dropdown_list()
     
     
-    // returns true if user opened to edit has $capability assigned through the roles or directly
+    // returns true if $user has $capability assigned through the roles or directly
     // returns true if user has role with name equal $capability
     protected function user_can($capability) {
         
@@ -2361,16 +2332,15 @@ class Ure_Lib extends Garvs_WP_Lib {
     // end of user_can()           
     
     
-    // returns true if user $user has $capability assigned through the roles or directly
-    // returns true if user $user has role with name equal $capability
+    // returns true if current user has $capability assigned through the roles or directly
+    // returns true if current user has role with name equal $cap
     public function user_has_capability($user, $cap) {
 
         global $wp_roles;
 
-        if (empty($user) || !is_object($user)) {
+        if (!is_object($user) || empty($user->ID)) {
             return false;
         }
-                
         if (is_multisite() && is_super_admin($user->ID)) {
             return true;
         }
